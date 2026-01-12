@@ -1,7 +1,9 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/dinesht04/go-micro/internal/data"
@@ -42,10 +44,54 @@ func (s *Server) StartServer() {
 		}
 		fmt.Println(task)
 
+		encodedTask, err := json.Marshal(&task)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"ERROR": "Error while marhsalling task",
+			})
+			return
+		}
+
+		err = s.rdb.RPush(ctx, "taskQueue", encodedTask).Err()
+		if err != nil {
+			log.Fatal(err)
+		}
+
 		//mantain a map in memory
 
 		//how to implement the retries mechanic?
 		//how will the queue insertion work? - draw on excalidraw
+	})
+
+	r.GET("/task", func(ctx *gin.Context) {
+		val := s.rdb.RPop(ctx, "taskQueue")
+
+		if err := val.Err(); err == redis.Nil {
+			ctx.JSON(http.StatusOK, gin.H{
+				"Status": "Queue is empty",
+			})
+			return
+		}
+
+		var Task data.Task
+
+		encodedTask, err := val.Bytes()
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"ERROR": "Error while decoding redis string",
+			})
+			fmt.Println(val.Err())
+			return
+		}
+
+		err = json.Unmarshal(encodedTask, &Task)
+
+		fmt.Println("redis string: ", val.String())
+
+		ctx.JSON(http.StatusOK, gin.H{
+			"task": Task,
+		})
+
 	})
 
 	//8080
