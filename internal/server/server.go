@@ -4,20 +4,23 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 )
 
 type Server struct {
 	Port string
+	rdb  *redis.Client
 }
 
-func NewServer() *Server {
+func NewServer(rdb *redis.Client) *Server {
 	server := &Server{
 		Port: "8080",
+		rdb:  rdb,
 	}
 	return server
 }
 
-func StartServer() {
+func (s *Server) StartServer() {
 	//start server and pass params into redis
 	r := gin.Default()
 
@@ -28,5 +31,5 @@ func StartServer() {
 	})
 
 	//8080
-	r.Run()
+	r.Run(s.Port)
 }

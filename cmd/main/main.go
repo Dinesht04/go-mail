@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/dinesht04/go-micro/internal/data"
+	"github.com/dinesht04/go-micro/internal/server"
 )
 
 func main() {
@@ -13,6 +14,9 @@ func main() {
 
 	ctx := context.Background()
 
-	_ = data.NewRedisClient(ctx)
+	rdb := data.NewRedisClient(ctx)
+	server := server.NewServer(rdb)
+
+	server.StartServer()
 
 }
