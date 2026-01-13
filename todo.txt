@@ -4,18 +4,25 @@ task{
     payload
 }
 
+I will store the OTP with TTL 5 minutes. they will have to send another verify-otp request to my endpoint
+
 tpye = email | custom
 payload 
     email - SMTP
         recepient email
-        OTP
+        o)generate OTP
             how many digits
-        Message
-            type - password or username reset | normal message | subscription
+        o)verify OTP
+        o)Message
+            type - password or username reset | normal message
             content - in markdown
-            subscription? - daily | weekly | yearly
+        o)subscription
+            Time? - daily | weekly | yearly
             User wants to unsubscribe?
-    Do I need to spin up an aws image for this to work or can I acheive this internally only with SMTP?
+        o)unsubscribe
+
+    x)Do I need to spin up an aws image for this to work or can I acheive this internally only with SMTP?
+    ans) can be achieved with SMTP. google provides one.
 
     custom - Dockerfile
         Dockerfile Content (needs validation)
@@ -32,9 +39,6 @@ Response
         Error Encountered
             error code
             error message
-
-
-        
 
 
 upon request, insert into queue.

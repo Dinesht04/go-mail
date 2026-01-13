@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dinesht04/go-micro/internal/data"
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -54,32 +55,50 @@ func Worker(rdb *redis.Client, ctx context.Context) {
 
 		task.Retries = task.Retries - 1
 
-		status := executeTask()
+		task.Id = uuid.NewString()
 
-		if !status {
-			fmt.Println("Performing Task: ", task.Id, " Failed!, Adding back to queue")
-			fmt.Println("Retries left: ", task.Retries)
+		taskType := task.Type
+		// status := sendEmail()
 
-			if task.Retries <= 0 {
-				fmt.Println("Task: ", task.Task, " Retries ended, returning...")
-				continue
-			}
-
-			encodedTask, err := json.Marshal(&task)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			fmt.Println("Inserting again....")
-			status, err := rdb.RPush(ctx, "taskQueue", encodedTask).Result()
-			fmt.Println("Inserting again Result: ", status, " | err: ", err)
-
-			if err != nil {
-				log.Fatal(err)
-			}
-		} else {
-			fmt.Println("Performed Task: ", task.Task, " Successfully!")
+		switch taskType {
+		case "generateOtp":
+			GenerateOtp()
+		case "verifyOtp":
+			VerifyOtp()
+		case "message":
+			Sendmessage()
+		case "subscribe":
+			Subscribe()
+		case "unsubscribe":
+			Unsubscribe()
+		default:
+			fmt.Println("Random shi bruh")
 		}
+
+		// if !status {
+		// 	fmt.Println("Performing Task: ", task.Id, " Failed!, Adding back to queue")
+		// 	fmt.Println("Retries left: ", task.Retries)
+
+		// 	if task.Retries <= 0 {
+		// 		fmt.Println("Task: ", task.Task, " Retries ended, returning...")
+		// 		continue
+		// 	}
+
+		// 	encodedTask, err := json.Marshal(&task)
+		// 	if err != nil {
+		// 		log.Fatal(err)
+		// 	}
+
+		// 	fmt.Println("Inserting again....")
+		// 	status, err := rdb.RPush(ctx, "taskQueue", encodedTask).Result()
+		// 	fmt.Println("Inserting again Result: ", status, " | err: ", err)
+
+		// 	if err != nil {
+		// 		log.Fatal(err)
+		// 	}
+		// } else {
+		// 	fmt.Println("Performed Task: ", task.Task, " Successfully!")
+		// }
 
 	}
 
