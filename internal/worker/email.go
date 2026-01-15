@@ -13,7 +13,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-func sendEmail(email *data.Email) bool {
+func sendEmail(email *data.Email) (bool, error) {
 	fmt.Println("sending mail?")
 
 	auth := smtp.PlainAuth("", os.Getenv("smtp_user"), os.Getenv("smtp_pass"), os.Getenv("smtp_server"))
@@ -35,12 +35,12 @@ func sendEmail(email *data.Email) bool {
 	err := smtp.SendMail(fmt.Sprintf("%s:%s", os.Getenv("smtp_server"), os.Getenv("smtp_port")), auth, os.Getenv("smtp_user"), to, msg)
 	if err != nil {
 		log.Fatal(err)
-		return false
+		return false, err
 	}
-	return true
+	return true, nil
 }
 
-func GenerateOtp(task data.Task, rdb *redis.Client, ctx context.Context) {
+func GenerateOtp(task data.Task, rdb *redis.Client, ctx context.Context) (bool, string, error) {
 
 	var otp string
 
@@ -50,16 +50,15 @@ func GenerateOtp(task data.Task, rdb *redis.Client, ctx context.Context) {
 
 	fmt.Println("OTP generated bruh: ", otp)
 
-	err := rdb.HSetEXWithArgs(ctx, "otp_hashmap", &redis.HSetEXOptions{
-		Condition:      redis.HSetEXFNX,
+	res, err := rdb.HSetEXWithArgs(ctx, "otp_hashmap", &redis.HSetEXOptions{
 		ExpirationType: redis.HSetEXExpirationEX,
 		ExpirationVal:  120,
-	}, task.Payload.UserID, otp).Err()
+	}, task.Payload.UserID, otp).Result()
 	if err != nil {
-		log.Fatal(err)
+		return false, "Task failed during Redis insertion", err
 	}
 
-	fmt.Println("OTP stored in HMAP: successfully")
+	fmt.Println("OTP stored in HMAP: successfully, result: ", res)
 
 	email := &data.Email{
 		Content:   fmt.Sprintf("Your OTP is: %s", otp),
@@ -67,7 +66,8 @@ func GenerateOtp(task data.Task, rdb *redis.Client, ctx context.Context) {
 		Subject:   "OTP Requested",
 	}
 
-	sendEmail(email)
+	status, err := sendEmail(email)
+	return status, "Success!!", err
 
 }
 

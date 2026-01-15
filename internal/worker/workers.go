@@ -60,45 +60,54 @@ func Worker(rdb *redis.Client, ctx context.Context) {
 		taskType := task.Type
 		// status := sendEmail()
 
+		var status bool
+		var logs string
+
 		switch taskType {
 		case "generateOtp":
-			GenerateOtp(task, rdb, ctx)
+			status, logs, err = GenerateOtp(task, rdb, ctx)
 		case "verifyOtp":
+			//Prolly have to shift this to another endpoint since it requires a response.
 			VerifyOtp()
 		case "message":
+			//this can stay here
 			Sendmessage()
 		case "subscribe":
+			//This can stay here
 			Subscribe()
 		case "unsubscribe":
+			//this can stay here
 			Unsubscribe()
 		default:
 			fmt.Println("Random shi bruh")
 		}
 
-		// if !status {
-		// 	fmt.Println("Performing Task: ", task.Id, " Failed!, Adding back to queue")
-		// 	fmt.Println("Retries left: ", task.Retries)
+		//send this to /metric endpoint? it will be a stream right? or a store of all the logs? interesting
+		fmt.Println("log: ", logs)
 
-		// 	if task.Retries <= 0 {
-		// 		fmt.Println("Task: ", task.Task, " Retries ended, returning...")
-		// 		continue
-		// 	}
+		if !status {
+			fmt.Println("Performing Task: ", task.Id, " Failed!, Adding back to queue")
+			fmt.Println("Retries left: ", task.Retries)
 
-		// 	encodedTask, err := json.Marshal(&task)
-		// 	if err != nil {
-		// 		log.Fatal(err)
-		// 	}
+			if task.Retries <= 0 {
+				fmt.Println("Task: ", task.Task, " Retries ended, returning...")
+				continue
+			}
 
-		// 	fmt.Println("Inserting again....")
-		// 	status, err := rdb.RPush(ctx, "taskQueue", encodedTask).Result()
-		// 	fmt.Println("Inserting again Result: ", status, " | err: ", err)
+			encodedTask, err := json.Marshal(&task)
+			if err != nil {
+				log.Fatal(err)
+			}
 
-		// 	if err != nil {
-		// 		log.Fatal(err)
-		// 	}
-		// } else {
-		// 	fmt.Println("Performed Task: ", task.Task, " Successfully!")
-		// }
+			fmt.Println("Inserting again....")
+			err = rdb.RPush(ctx, "taskQueue", encodedTask).Err()
+			if err != nil {
+				log.Fatal(err)
+			}
+
+		} else {
+			fmt.Println("Performed Task: ", task.Task, " Successfully!")
+		}
 
 	}
 
