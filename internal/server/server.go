@@ -114,28 +114,8 @@ func (s *Server) StartServer() {
 			"verified": verified,
 		})
 
-		return
 	})
 
 	//8080
 	r.Run(s.Port)
 }
-
-// func sendEmail() {
-// 	fmt.Println("sending mail?")
-// 	auth := smtp.PlainAuth("", "dineshtyagi567@gmail.com", "", "smtp.gmail.com")
-
-// 	// Connect to the server, authenticate, set the sender and recipient,
-// 	// and send the email all in one step.
-// 	to := []string{"pankh1105@gmail.com"}
-// 	msg := []byte("To: pankh1105@gmail.com\r\n" +
-// 		"Subject: From my Microservice's Smtp Protocol!\r\n" +
-// 		"\r\n" +
-// 		"My declaration of love, through a microservice. Hope this reaches you. This is my carrier pigeon haha <3.\r\n")
-// 	err := smtp.SendMail("smtp.gmail.com:25", auth, "dineshtyagi567@gmail.com", to, msg)
-// 	fmt.Println("error is", err)
-
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-// }

@@ -2,12 +2,11 @@ package cron
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"log"
-	"net/smtp"
-	"os"
 
 	"github.com/dinesht04/go-micro/internal/data"
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"github.com/robfig/cron/v3"
 )
@@ -24,10 +23,14 @@ type CronJobStation struct {
 	Jobs    map[string]userRecord
 }
 
-func CreateNewCronJobStation() *CronJobStation {
+func CreateNewCronJobStation(ctx context.Context, rdb *redis.Client) *CronJobStation {
 	c := cron.New()
+	c.Start()
 	return &CronJobStation{
-		cron: c,
+		cron:    c,
+		Jobs:    make(map[string]userRecord),
+		context: ctx,
+		rdb:     rdb,
 	}
 }
 
@@ -50,71 +53,61 @@ func (c *CronJobStation) Subscribe(userEmailId string, frequency string, content
 func (c *CronJobStation) Unsubscribe(userEmailId string) error {
 	Record, ok := c.Jobs[userEmailId]
 	if !ok {
-		log.Fatal("Record doesnt exist how to unsubscruibe?")
+		return fmt.Errorf("Record doesnt exist how to unsubscruibe?")
 	}
 	c.cron.Remove(Record.cronId)
 	delete(c.Jobs, userEmailId)
 	fmt.Println("cron job removed successfully")
+	return nil
 }
 
 func RegisterCronSendingEmailJob(c *CronJobStation, userEmailId string, frequency string, contentType string) (cron.EntryID, error) {
 	fmt.Println("Registering for the job")
 
-	cronId, err := c.cron.AddFunc("@hourly", func() {
-		//send mail, get content here from rdb and pass it onto sendMail()
-
+	cronId, err := c.cron.AddFunc("*/1 * * * *", func() {
 		//this stuff goes to logs
 		fmt.Println("Sending a mail")
-		content, err := c.rdb.HGet(c.context, "subscriptionContentMap", contentType).Result()
+		content, err := c.rdb.HGetAll(c.context, "subscriptionContentMap"+contentType).Result()
 		if err != nil {
 			if err == redis.Nil {
 				fmt.Println("This type of content doesnt exist")
+				return
 			} else {
 				fmt.Println("Err accessing content type")
 				fmt.Println(err)
+				return
 			}
 		}
 
-		mail := &data.Email{
-			Recipient: userEmailId,
-			Subject:   "Automated email",
-			Content:   content,
+		messageTask := data.Task{
+			Id:   uuid.NewString(),
+			Task: "Automated Email",
+			Type: "message",
+			Payload: data.Payload{
+				UserID:  userEmailId,
+				Subject: content["subject"],
+				Content: content["content"],
+			},
+			Retries: 3,
 		}
 
-		success, err := SendEmailCron(mail)
-		if !success {
-			fmt.Println("Err sending email")
+		encodedTask, err := json.Marshal(&messageTask)
+		if err != nil {
+			fmt.Println("Error decoding")
 			fmt.Println(err)
+			return
+		}
+
+		err = c.rdb.RPush(c.context, "taskQueue", encodedTask).Err()
+		if err != nil {
+			fmt.Println("Error Pushing to task Queue")
+			fmt.Println(err)
+			return
+		} else {
+			fmt.Println("Cron job added automatic email to taskqueue successully")
 		}
 
 	})
 
 	return cronId, err
-}
-
-func SendEmailCron(email *data.Email) (bool, error) {
-	fmt.Println("sending mail?")
-
-	auth := smtp.PlainAuth("", os.Getenv("smtp_user"), os.Getenv("smtp_pass"), os.Getenv("smtp_server"))
-
-	// Connect to the server, authenticate, set the sender and recipient,
-	// and send the email all in one step.
-	to := []string{email.Recipient}
-
-	msgTo := fmt.Sprintf("To: %s\r\n", email.Recipient)
-
-	msgSubject := fmt.Sprintf("%s\r\n", email.Subject)
-
-	msgContent := fmt.Sprintf("%s\r\n", email.Content)
-
-	msg := []byte(msgTo +
-		msgSubject +
-		"\r\n" +
-		msgContent)
-	err := smtp.SendMail(fmt.Sprintf("%s:%s", os.Getenv("smtp_server"), os.Getenv("smtp_port")), auth, os.Getenv("smtp_user"), to, msg)
-	if err != nil {
-		log.Fatal(err)
-		return false, err
-	}
-	return true, nil
 }

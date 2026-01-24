@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/dinesht04/go-micro/internal/cron"
 	"github.com/dinesht04/go-micro/internal/data"
 	"github.com/dinesht04/go-micro/internal/email"
 	"github.com/google/uuid"
@@ -16,25 +17,27 @@ import (
 )
 
 type WorkStation struct {
-	Rdb     *redis.Client
-	Workers int
+	Rdb         *redis.Client
+	Workers     int
+	CronStation *cron.CronJobStation
 }
 
-func NewWorkStation(rdb *redis.Client, num int) *WorkStation {
+func NewWorkStation(rdb *redis.Client, num int, cron *cron.CronJobStation) *WorkStation {
 	return &WorkStation{
-		Rdb:     rdb,
-		Workers: num,
+		Rdb:         rdb,
+		Workers:     num,
+		CronStation: cron,
 	}
 }
 
 func (w *WorkStation) StartWorkers(ctx context.Context) {
 
 	for range w.Workers {
-		go Worker(w.Rdb, ctx)
+		go Worker(w.Rdb, ctx, w.CronStation)
 	}
 }
 
-func Worker(rdb *redis.Client, ctx context.Context) {
+func Worker(rdb *redis.Client, ctx context.Context, c *cron.CronJobStation) {
 
 	for {
 
@@ -72,10 +75,10 @@ func Worker(rdb *redis.Client, ctx context.Context) {
 			status, logs, err = email.Sendmessage(task, rdb)
 		case "subscribe":
 			//This can stay here
-			email.Subscribe()
+			status, logs, err = email.Subscribe(task, rdb, ctx, c)
 		case "unsubscribe":
-			//this can stay here
-			email.Unsubscribe()
+			//should this stay here?
+			status, logs, err = email.Unsubscribe(task, rdb, c)
 		default:
 			fmt.Println("Random shi bruh")
 		}

@@ -3,7 +3,7 @@ package data
 type Task struct {
 	Id      string  `json:"id"`
 	Task    string  `json:"task" binding:"required"`
-	Type    string  `json:"type" binding:"required,oneof= generateOtp verifyOtp message subscribe unsubscribe"`
+	Type    string  `json:"type" binding:"required,oneof= generateOtp message subscribe unsubscribe"`
 	Payload Payload `json:"payload" binding:"required"`
 	Retries int     `json:"retries" binding:"required"`
 }
@@ -12,9 +12,9 @@ type Payload struct {
 	UserID      string `json:"userId" binding:"required,email"`
 	ContentType string `json:"content_type" binding:"required_if=Type subscribe"`
 	Length      int    `json:"length" binding:"required_if=Type generateOtp,lte=8"`
-	Frequency   string `json:"frequency" binding:"required_if=Type subscribe"`
-	Content     string `json:"content" binding:"required_if=Type message"`
-	Subject     string `json:"subject" binding:"requred_if=Type message"`
+	Frequency   string `json:"frequency" binding:"omitempty,required_if=Type subscribe,oneof= @monthly @weekly @daily @hourly"`
+	Content     string `json:"content" binding:"required_if=Type message,required_if=Type subscribe"`
+	Subject     string `json:"subject" binding:"required_if=Type message,required_if=Type subscribe"`
 }
 
 type Email struct {

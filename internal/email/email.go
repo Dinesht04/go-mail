@@ -112,7 +112,12 @@ func Sendmessage(task data.Task, rdb *redis.Client) (bool, string, error) {
 
 func Subscribe(task data.Task, rdb *redis.Client, ctx context.Context, c *cron.CronJobStation) (bool, string, error) {
 
-	err := rdb.HSet(ctx, "subscriptionContentMap", task.Payload.ContentType, task.Payload.Content).Err()
+	fields := []string{
+		"subject", task.Payload.Subject,
+		"content", task.Payload.Content,
+	}
+
+	err := rdb.HSet(ctx, "subscriptionContentMap"+task.Payload.ContentType, fields).Err()
 	if err != nil {
 		return false, "subscription content insertiong error", err
 	}
