@@ -116,6 +116,21 @@ func (s *Server) StartServer() {
 
 	})
 
+	//how to manage logs?
+
+	r.GET("/updateSubscriptionContent", func(ctx *gin.Context) {
+		// err := rdb.HSet(ctx, "subscriptionContentMap"+task.Payload.ContentType, fields).Err()
+
+	})
+
+	r.GET("/metrics", func(ctx *gin.Context) {
+		//us redis to store and access total jobs, successful jobs, etv
+	})
+
+	r.GET("/logs", func(ctx *gin.Context) {
+		//implement all that elastisearch shi?
+	})
+
 	//8080
 	r.Run(s.Port)
 }

@@ -26,7 +26,7 @@ func SendEmail(email *data.Email) (bool, error) {
 
 	msgTo := fmt.Sprintf("To: %s\r\n", email.Recipient)
 
-	msgSubject := fmt.Sprintf("%s\r\n", email.Subject)
+	msgSubject := fmt.Sprintf("Subject: %s\r\n", email.Subject)
 
 	msgContent := fmt.Sprintf("%s\r\n", email.Content)
 
@@ -126,15 +126,12 @@ func Subscribe(task data.Task, rdb *redis.Client, ctx context.Context, c *cron.C
 
 	return true, "subscribed successfully", nil
 
-	//since this is an in-house feature repository, we don't need to maintain a list of userIds and their corresponding cronIds?
-	//Content hashmap would contain the s
-
 	// content => This can be changed through /updateSubscriptionContent
 	//Content should be accessed dynamically in cron job since it is subject to change.
 }
 
 func Unsubscribe(task data.Task, rdb *redis.Client, c *cron.CronJobStation) (bool, string, error) {
-	err := c.Unsubscribe(task.Payload.UserID)
+	err := c.Unsubscribe(task.Payload.UserID, task.Payload.ContentType)
 	if err != nil {
 		return false, "error unsubscribing", err
 	}

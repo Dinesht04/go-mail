@@ -45,13 +45,13 @@ func (c *CronJobStation) Subscribe(userEmailId string, frequency string, content
 		cronId: cronId,
 	}
 
-	c.Jobs[userEmailId] = record
+	c.Jobs[userEmailId+contentType] = record
 	fmt.Println("cron job added successfully")
 	return nil
 }
 
-func (c *CronJobStation) Unsubscribe(userEmailId string) error {
-	Record, ok := c.Jobs[userEmailId]
+func (c *CronJobStation) Unsubscribe(userEmailId string, contentType string) error {
+	Record, ok := c.Jobs[userEmailId+contentType]
 	if !ok {
 		return fmt.Errorf("Record doesnt exist how to unsubscruibe?")
 	}

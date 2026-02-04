@@ -89,6 +89,7 @@ func Worker(rdb *redis.Client, ctx context.Context, c *cron.CronJobStation) {
 		if !status {
 			fmt.Println("Performing Task: ", task.Id, " Failed!, Adding back to queue")
 			fmt.Println("Retries left: ", task.Retries)
+			fmt.Println("Error occured", err)
 
 			if task.Retries <= 0 {
 				fmt.Println("Task: ", task.Task, " Retries ended, returning...")
