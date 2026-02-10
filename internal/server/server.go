@@ -135,22 +135,19 @@ func (s *Server) StartServer() {
 			return
 		}
 
-		fields := []string{
-			"subject", subreq.Subject,
-			"content", subreq.Content,
-		}
-
-		err = s.rdb.HSet(ctx, "subscriptionContentMap"+subreq.ContentType, fields).Err()
+		msg, err := services.CreateContentType(subreq, s.rdb, ctx)
 		if err != nil {
 			s.logger.Info("Error while updating subscription content map", "error", err)
 			ctx.JSON(http.StatusInternalServerError, gin.H{
 				"error": "Internal Server Error",
+				"msg":   msg,
 			})
 			ctx.Abort()
 			return
 		} else {
 			ctx.JSON(http.StatusOK, gin.H{
-				"success": "Content Type created succesfully!",
+				"status": true,
+				"msg":    msg,
 			})
 			return
 		}
@@ -170,93 +167,57 @@ func (s *Server) StartServer() {
 			return
 		}
 
-		exists, err := s.rdb.Exists(ctx, "subscriptionContentMap"+subReq.ContentType).Result()
+		status, msg, err := services.UpdateContentType(subReq, s.rdb, ctx)
 		if err != nil {
-			s.logger.Info("Error while updating subscription content map", "error", err)
+			s.logger.Info(msg, "error", err)
 			ctx.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Internal Server Error",
+				"status": status,
+				"error":  "Internal Server Error",
+				msg:      msg,
 			})
 			ctx.Abort()
 			return
+
 		}
 
-		if exists == 0 {
+		if !status {
 			ctx.JSON(http.StatusBadRequest, gin.H{
-				"error": "Content Type doesn't exist",
-			})
-			ctx.Abort()
-			return
-		}
-
-		fields := []string{
-			"subject", subReq.Subject,
-			"content", subReq.Content,
-		}
-
-		err = s.rdb.HSet(ctx, "subscriptionContentMap"+subReq.ContentType, fields).Err()
-		if err != nil {
-			s.logger.Info("Error while updating subscription content map", "error", err)
-			ctx.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Internal Server Error",
+				"status": status,
+				"msg":    msg,
 			})
 			ctx.Abort()
 			return
 		} else {
 			ctx.JSON(http.StatusOK, gin.H{
-				"success": "Content map updated succesfully",
+				"status": status,
+				"msg":    msg,
 			})
 			return
+
 		}
 
 	})
 
 	r.GET("/metrics", func(ctx *gin.Context) {
 		//us redis to store and access total jobs, successful jobs, etv
-		totalTasksExecuted, err := s.rdb.Get(ctx, "totalTasksExecuted").Result()
-		if err != nil {
-			if err == redis.Nil {
-				totalTasksExecuted = "0"
-			} else {
-				s.logger.Info("Error while accessing total tasks executed", "error", err)
-				ctx.JSON(http.StatusInternalServerError, gin.H{
-					"error": "Internal Server Error",
-				})
-				ctx.Abort()
-				return
-			}
-		}
-		totalTasksFailed, err := s.rdb.Get(ctx, "totalTasksFailed").Result()
-		if err != nil {
-			if err == redis.Nil {
-				totalTasksFailed = "0"
-			} else {
-				s.logger.Info("Error while accessing total tasks failed", "error", err)
-				ctx.JSON(http.StatusInternalServerError, gin.H{
-					"error": "Internal Server Error",
-				})
-				ctx.Abort()
-				return
-			}
 
-		}
-		totalTasksSuccessful, err := s.rdb.Get(ctx, "totalTasksSuccessful").Result()
+		executed, failed, successful, msg, err := services.GetMetrics(s.rdb, ctx)
 		if err != nil {
-			if err == redis.Nil {
-				totalTasksFailed = "0"
-			} else {
-				s.logger.Info("Error while accessing total successful tasks", "error", err)
-				ctx.JSON(http.StatusInternalServerError, gin.H{
-					"error": "Internal Server Error",
-				})
-				ctx.Abort()
-				return
-			}
+			s.logger.Info(msg, "error", err)
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"status": false,
+				"msg":    msg,
+			})
+			ctx.Abort()
+			return
+
 		}
 
 		ctx.JSON(http.StatusOK, gin.H{
-			"Total Jobs Executed": totalTasksExecuted,
-			"Jobs Successful":     totalTasksSuccessful,
-			"Jobs Failed":         totalTasksFailed,
+			"status":              true,
+			"Total Jobs Executed": executed,
+			"Jobs Successful":     successful,
+			"Jobs Failed":         failed,
 		})
 
 	})

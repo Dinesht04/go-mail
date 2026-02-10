@@ -64,9 +64,10 @@ retry logic in the goroutine
 
 
 to do task:-
- x1)validating task
-    If task type is subscribe/unsubscribe - then content type should be present. need contentType because in cron hashmap the key is userID + Content type, if validation fails, send bad request err with message reason
-  2)Moving OTP verification Logic into Services
-  3)Moving ContentType logic into Services
+    x1)validating task
+        If task type is subscribe/unsubscribe - then content type should be present. need contentType because in cron hashmap the key is userID + Content type, if validation fails, send bad request err with message reason
+    x2)Moving OTP verification Logic into Services
+    x3)Moving ContentType logic into Services
   4)Implementing Auth
   5)Write Logs to a logs.txt file
+  6)Move metric logic into services
