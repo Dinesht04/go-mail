@@ -11,7 +11,7 @@ type Task struct {
 type Payload struct {
 	UserID      string `json:"userId" binding:"required,email"`
 	ContentType string `json:"content_type" binding:"required_if=Type subscribe,required_if=Type unsubscribe"`
-	Length      int    `json:"length" binding:"required_if=Type generateOtp,lte=8"`
+	Length      int    `json:"length" binding:"required_if=Type generateOtp,gte=4,lte=8"`
 	Frequency   string `json:"frequency" binding:"omitempty,required_if=Type subscribe,oneof= @monthly @weekly @daily @hourly"`
 	Content     string `json:"content" binding:"required_if=Type message"`
 	Subject     string `json:"subject" binding:"required_if=Type message"`
