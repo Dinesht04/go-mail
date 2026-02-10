@@ -18,10 +18,6 @@ Sending emails is a "slow" I/O operation. If your main application waits for an 
 
 ## Tech Stack
 
-Here is the updated **Tech Stack** section with the documentation links integrated into the names.
-
-## Tech Stack
-
 * **Framework:** [Gin Gonic](https://github.com/gin-gonic/gin) (HTTP Routing)
 * **Queue/Storage:** [go-redis](https://github.com/redis/go-redis) (Redis client for Go)
 * **Scheduling:** [robfig/cron](https://github.com/robfig/cron) (For recurring tasks)
