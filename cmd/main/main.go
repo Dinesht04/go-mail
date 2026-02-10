@@ -15,9 +15,6 @@ import (
 
 func main() {
 
-	//connect to redis
-	//start the server
-
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error Loading .env file")

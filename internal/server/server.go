@@ -1,15 +1,12 @@
 package server
 
 import (
-	"encoding/json"
-	"log"
 	"log/slog"
 	"net/http"
 
 	"github.com/dinesht04/go-micro/internal/data"
-	"github.com/dinesht04/go-micro/internal/email"
+	"github.com/dinesht04/go-micro/internal/services"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -43,41 +40,55 @@ func (s *Server) StartServer() {
 		err := ctx.ShouldBind(&task)
 		if err != nil {
 			ctx.JSON(http.StatusBadRequest, gin.H{
-				"ERROR": "INVALID FORMAT",
+				"status": "false",
+				"error":  "INVALID FORMAT",
+				"msg":    err,
 			})
-			log.Fatal(err)
 		}
-		// fmt.Println(task)
-		task.Id = uuid.NewString()
 
-		encodedTask, err := json.Marshal(&task)
+		validated, msg, err := services.ValidateTask(task, s.rdb, ctx)
 		if err != nil {
+			s.logger.Info("Error Validating Task", "error", err)
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"status": "false",
+				"error":  "Internal Server Error",
+			})
+			ctx.Abort()
+			return
+		}
+
+		if !validated {
 			ctx.JSON(http.StatusBadRequest, gin.H{
-				"ERROR": "Error while marhsalling task",
+				"status": validated,
+				"error":  msg,
 			})
 			return
 		}
 
-		err = s.rdb.RPush(ctx, "taskQueue", encodedTask).Err()
+		status, msg, err := services.ProduceTask(task, s.rdb, ctx)
 		if err != nil {
-			s.logger.Info("Error pushing task to the Queue", "error", err)
+			s.logger.Info("Error Producing Task", "error", err)
 			ctx.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Internal Server Error",
+				"status": "false",
+				"error":  "Internal Server Error",
+			})
+			ctx.Abort()
+			return
+		}
+
+		if !status {
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"status": status,
+				"error":  msg,
 			})
 			ctx.Abort()
 			return
 		} else {
-			s.logger.Info("Pushed Task to the Queue",
-				"taskId", task.Id,
-				"taskName", task.Task)
-
 			ctx.JSON(http.StatusOK, gin.H{
-				"status":   "success",
-				"message":  "Task Added to the Queue Successfully",
-				"taskId":   task.Id,
-				"taskName": task.Task,
-				"taskType": task.Type,
+				"status": status,
+				"msg":    msg,
 			})
+			return
 		}
 
 	})
@@ -94,7 +105,7 @@ func (s *Server) StartServer() {
 			return
 		}
 
-		verified, err := email.VerifyOtp(req, s.rdb, ctx)
+		verified, err := services.VerifyOtp(req, s.rdb, ctx)
 		if err != nil {
 			s.logger.Info("Error while verifying OTP", "error", err)
 			ctx.JSON(http.StatusInternalServerError, gin.H{
@@ -111,8 +122,42 @@ func (s *Server) StartServer() {
 
 	})
 
-	r.POST("/updateSubscriptionContent", func(ctx *gin.Context) {
+	r.POST("/subscriptionContent", func(ctx *gin.Context) {
+		var subreq data.CreateContent
 
+		err := ctx.ShouldBind(&subreq)
+		if err != nil {
+			s.logger.Info("Invalid Request Format", "error", err)
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"error": "Invalid Request Format",
+			})
+			ctx.Abort()
+			return
+		}
+
+		fields := []string{
+			"subject", subreq.Subject,
+			"content", subreq.Content,
+		}
+
+		err = s.rdb.HSet(ctx, "subscriptionContentMap"+subreq.ContentType, fields).Err()
+		if err != nil {
+			s.logger.Info("Error while updating subscription content map", "error", err)
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Internal Server Error",
+			})
+			ctx.Abort()
+			return
+		} else {
+			ctx.JSON(http.StatusOK, gin.H{
+				"success": "Content Type created succesfully!",
+			})
+			return
+		}
+
+	})
+
+	r.PUT("/subscriptionContent", func(ctx *gin.Context) {
 		var subReq data.UpdateContent
 
 		err := ctx.ShouldBind(&subReq)
@@ -120,6 +165,24 @@ func (s *Server) StartServer() {
 			s.logger.Info("Invalid Request Format", "error", err)
 			ctx.JSON(http.StatusBadRequest, gin.H{
 				"error": "Invalid Request Format",
+			})
+			ctx.Abort()
+			return
+		}
+
+		exists, err := s.rdb.Exists(ctx, "subscriptionContentMap"+subReq.ContentType).Result()
+		if err != nil {
+			s.logger.Info("Error while updating subscription content map", "error", err)
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Internal Server Error",
+			})
+			ctx.Abort()
+			return
+		}
+
+		if exists == 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"error": "Content Type doesn't exist",
 			})
 			ctx.Abort()
 			return

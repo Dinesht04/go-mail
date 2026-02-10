@@ -40,8 +40,10 @@ includes 5 endpoints
 
     4 Types of Taks:-
     1) Message - sends a message
+
     2)GenerateOTP - generates otp and stores it in a redis hashmap along with the user's email
     3)Subscribe - frequency can be hourly, daily, weekly, monthly and yearly
+        the contentType sent should exist, otherwise the task will fail
     4)Unsubscribe -  unsubscribes
 
 3)/verify POST
@@ -52,8 +54,17 @@ includes 5 endpoints
         OTP    string `json:"otp" binding:"required,min=4,max=8"`
     }
 
-4)/updateSubscriptionContent POST
-    update the subscription content
+4.1)/SubscriptionContent POST
+    create a subscription content tpe
+    payload:-
+    type CreateContent struct {
+	ContentType string `json:"content_type" binding:"required"`
+	Content     string `json:"content" binding:"required"`
+	Subject     string `json:"subject" binding:"required"`
+    }
+
+4.2)/SubscriptionContent PUT
+    update the subscription content - should exist
     payload:-
     type UpdateContent struct {
 	ContentType string `json:"content_type" binding:"required"`

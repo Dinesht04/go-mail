@@ -1,4 +1,4 @@
-package email
+package services
 
 import (
 	"context"
@@ -11,7 +11,6 @@ import (
 
 	"github.com/dinesht04/go-micro/internal/cron"
 	"github.com/dinesht04/go-micro/internal/data"
-	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -70,25 +69,6 @@ func GenerateOtp(task data.Task, rdb *redis.Client, ctx context.Context) (bool, 
 
 }
 
-func VerifyOtp(data data.VerifyOtpParams, rdb *redis.Client, ctx *gin.Context) (bool, error) {
-
-	res, err := rdb.HGet(ctx, "otp_hashmap", data.UserEmail).Result()
-	if err != nil {
-		if err == redis.Nil {
-			return false, nil
-		} else {
-			return false, err
-		}
-	}
-
-	if res == data.Otp {
-		return true, nil
-	} else {
-		return false, nil
-	}
-
-}
-
 func Sendmessage(task data.Task, rdb *redis.Client) (bool, string, error) {
 
 	email := &data.Email{
@@ -108,14 +88,13 @@ func Sendmessage(task data.Task, rdb *redis.Client) (bool, string, error) {
 
 func Subscribe(task data.Task, rdb *redis.Client, ctx context.Context, c *cron.CronJobStation) (bool, string, error) {
 
-	fields := []string{
-		"subject", task.Payload.Subject,
-		"content", task.Payload.Content,
-	}
-
-	err := rdb.HSet(ctx, "subscriptionContentMap"+task.Payload.ContentType, fields).Err()
+	exists, err := rdb.Exists(ctx, "subscriptionContentMap"+task.Payload.ContentType).Result()
 	if err != nil {
-		return false, "subscription content insertiong error", err
+		return false, "error while checking if content type exists", err
+	}
+	//
+	if exists == 0 {
+		return false, fmt.Sprintf("This content type doesn't exist: %s", task.Payload.ContentType), nil
 	}
 
 	err = c.Subscribe(task.Payload.UserID, task.Payload.Frequency, task.Payload.ContentType)

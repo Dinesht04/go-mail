@@ -13,8 +13,8 @@ type Payload struct {
 	ContentType string `json:"content_type" binding:"required_if=Type subscribe,required_if=Type unsubscribe"`
 	Length      int    `json:"length" binding:"required_if=Type generateOtp,lte=8"`
 	Frequency   string `json:"frequency" binding:"omitempty,required_if=Type subscribe,oneof= @monthly @weekly @daily @hourly"`
-	Content     string `json:"content" binding:"required_if=Type message,required_if=Type subscribe"`
-	Subject     string `json:"subject" binding:"required_if=Type message,required_if=Type subscribe"`
+	Content     string `json:"content" binding:"required_if=Type message"`
+	Subject     string `json:"subject" binding:"required_if=Type message"`
 }
 
 type Email struct {
@@ -26,6 +26,12 @@ type Email struct {
 type VerifyOtpParams struct {
 	UserEmail string `json:"userEmail" binding:"required,email"`
 	Otp       string `json:"otp" binding:"required,min=4,max=8"`
+}
+
+type CreateContent struct {
+	ContentType string `json:"content_type" binding:"required"`
+	Content     string `json:"content" binding:"required"`
+	Subject     string `json:"subject" binding:"required"`
 }
 
 type UpdateContent struct {

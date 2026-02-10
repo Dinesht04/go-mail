@@ -9,7 +9,7 @@ import (
 
 	"github.com/dinesht04/go-micro/internal/cron"
 	"github.com/dinesht04/go-micro/internal/data"
-	"github.com/dinesht04/go-micro/internal/email"
+	"github.com/dinesht04/go-micro/internal/services"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -40,7 +40,6 @@ func Worker(rdb *redis.Client, ctx context.Context, cron *cron.CronJobStation, l
 
 		results, err := rdb.BLPop(ctx, time.Minute, "taskQueue").Result()
 		if err == redis.Nil {
-			logger.Info("Nothing found in queue within timeout, waiting for 1 min again")
 			continue
 		}
 
@@ -66,23 +65,22 @@ func Worker(rdb *redis.Client, ctx context.Context, cron *cron.CronJobStation, l
 			"taskName", task.Task)
 
 		taskType := task.Type
-		// status := sendEmail()
 
 		var status bool
 		var logs string
 
 		switch taskType {
 		case "generateOtp":
-			status, logs, err = email.GenerateOtp(task, rdb, ctx)
+			status, logs, err = services.GenerateOtp(task, rdb, ctx)
 		case "message":
 			//this can stay here
-			status, logs, err = email.Sendmessage(task, rdb)
+			status, logs, err = services.Sendmessage(task, rdb)
 		case "subscribe":
 			//This can stay here
-			status, logs, err = email.Subscribe(task, rdb, ctx, cron)
+			status, logs, err = services.Subscribe(task, rdb, ctx, cron)
 		case "unsubscribe":
 			//should this stay here?
-			status, logs, err = email.Unsubscribe(task, rdb, cron)
+			status, logs, err = services.Unsubscribe(task, rdb, cron)
 		default:
 			logger.Info("Invalid Task Type", "unknown_task_type", task.Type)
 		}

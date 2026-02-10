@@ -58,3 +58,15 @@ retry logic in the goroutine
 //implement subject in the redis storage as well.
 
 //need to fix the content shi while the subscribe request is sent.
+
+//should make a /createContent endpoint and keep the updateContent endpoint.
+//Only send the content-type while subscribing
+
+
+to do task:-
+ x1)validating task
+    If task type is subscribe/unsubscribe - then content type should be present. need contentType because in cron hashmap the key is userID + Content type, if validation fails, send bad request err with message reason
+  2)Moving OTP verification Logic into Services
+  3)Moving ContentType logic into Services
+  4)Implementing Auth
+  5)Write Logs to a logs.txt file
