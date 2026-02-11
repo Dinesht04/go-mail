@@ -29,202 +29,212 @@ func (s *Server) StartServer() {
 	//start server and pass params into redis
 	r := gin.Default()
 
-	r.GET("/ping", Auth(), func(c *gin.Context) {
-		s.logger.Info("Endpoint health check")
-		c.JSON(http.StatusOK, gin.H{
-			"message": "pong",
+	{
+		health := r.Group("/health")
+		health.GET("/ping", func(c *gin.Context) {
+			s.logger.Info("Endpoint health check")
+			c.JSON(http.StatusOK, gin.H{
+				"message": "pong",
+			})
 		})
-	})
+		health.GET("/metrics", func(ctx *gin.Context) {
+			//us redis to store and access total jobs, successful jobs, etv
 
-	r.POST("/signup", HandleSignup(s.rdb))
-	r.POST("/deregister", HandleDeRegister(s.rdb))
+			executed, failed, successful, msg, err := services.GetMetrics(s.rdb, ctx)
+			if err != nil {
+				s.logger.Info(msg, "error", err)
+				ctx.JSON(http.StatusInternalServerError, gin.H{
+					"status": false,
+					"msg":    msg,
+				})
+				ctx.Abort()
+				return
 
-	r.POST("/task", Auth(), func(ctx *gin.Context) {
-		var task data.Task
-		err := ctx.ShouldBind(&task)
-		if err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{
-				"status": "false",
-				"error":  "INVALID FORMAT",
-				"msg":    err,
-			})
-		}
+			}
 
-		validated, msg, err := services.ValidateTask(task, s.rdb, ctx)
-		if err != nil {
-			s.logger.Info("Error Validating Task", "error", err)
-			ctx.JSON(http.StatusInternalServerError, gin.H{
-				"status": "false",
-				"error":  "Internal Server Error",
-			})
-			ctx.Abort()
-			return
-		}
-
-		if !validated {
-			ctx.JSON(http.StatusBadRequest, gin.H{
-				"status": validated,
-				"error":  msg,
-			})
-			return
-		}
-
-		status, msg, err := services.ProduceTask(task, s.rdb, ctx)
-		if err != nil {
-			s.logger.Info("Error Producing Task", "error", err)
-			ctx.JSON(http.StatusInternalServerError, gin.H{
-				"status": "false",
-				"error":  "Internal Server Error",
-			})
-			ctx.Abort()
-			return
-		}
-
-		if !status {
-			ctx.JSON(http.StatusBadRequest, gin.H{
-				"status": status,
-				"error":  msg,
-			})
-			ctx.Abort()
-			return
-		} else {
 			ctx.JSON(http.StatusOK, gin.H{
-				"status": status,
-				"msg":    msg,
+				"status":              true,
+				"Total Jobs Executed": executed,
+				"Jobs Successful":     successful,
+				"Jobs Failed":         failed,
 			})
-			return
-		}
 
-	})
-
-	r.POST("/verify", Auth(), func(ctx *gin.Context) {
-		var req data.VerifyOtpParams
-		err := ctx.ShouldBind(&req)
-		if err != nil {
-			s.logger.Info("Invalid Request Format", "error", err)
-			ctx.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid Request Format",
-			})
-			ctx.Abort()
-			return
-		}
-
-		verified, err := services.VerifyOtp(req, s.rdb, ctx)
-		if err != nil {
-			s.logger.Info("Error while verifying OTP", "error", err)
-			ctx.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Internal Server Error",
-			})
-			ctx.Abort()
-			return
-		}
-
-		ctx.JSON(http.StatusOK, gin.H{
-			"type":     "otp verification",
-			"verified": verified,
 		})
+	}
 
-	})
+	{
+		auth := r.Group("/auth")
+		auth.POST("/signup", HandleSignup(s.rdb))
+		auth.POST("/deregister", HandleDeRegister(s.rdb))
+	}
 
-	r.POST("/subscriptionContent", Auth(), func(ctx *gin.Context) {
-		var subreq data.CreateContent
+	{
+		task := r.Group("/task")
 
-		err := ctx.ShouldBind(&subreq)
-		if err != nil {
-			s.logger.Info("Invalid Request Format", "error", err)
-			ctx.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid Request Format",
-			})
-			ctx.Abort()
-			return
-		}
+		task.POST("/task", Auth(), func(ctx *gin.Context) {
+			var task data.Task
+			err := ctx.ShouldBind(&task)
+			if err != nil {
+				ctx.JSON(http.StatusBadRequest, gin.H{
+					"status": "false",
+					"error":  "INVALID FORMAT",
+					"msg":    err,
+				})
+			}
 
-		msg, err := services.CreateContentType(subreq, s.rdb, ctx)
-		if err != nil {
-			s.logger.Info("Error while updating subscription content map", "error", err)
-			ctx.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Internal Server Error",
-				"msg":   msg,
-			})
-			ctx.Abort()
-			return
-		} else {
-			ctx.JSON(http.StatusOK, gin.H{
-				"status": true,
-				"msg":    msg,
-			})
-			return
-		}
+			validated, msg, err := services.ValidateTask(task, s.rdb, ctx)
+			if err != nil {
+				s.logger.Info("Error Validating Task", "error", err)
+				ctx.JSON(http.StatusInternalServerError, gin.H{
+					"status": "false",
+					"error":  "Internal Server Error",
+				})
+				ctx.Abort()
+				return
+			}
 
-	})
+			if !validated {
+				ctx.JSON(http.StatusBadRequest, gin.H{
+					"status": validated,
+					"error":  msg,
+				})
+				return
+			}
 
-	r.PUT("/subscriptionContent", Auth(), func(ctx *gin.Context) {
-		var subReq data.UpdateContent
+			status, msg, err := services.ProduceTask(task, s.rdb, ctx)
+			if err != nil {
+				s.logger.Info("Error Producing Task", "error", err)
+				ctx.JSON(http.StatusInternalServerError, gin.H{
+					"status": "false",
+					"error":  "Internal Server Error",
+				})
+				ctx.Abort()
+				return
+			}
 
-		err := ctx.ShouldBind(&subReq)
-		if err != nil {
-			s.logger.Info("Invalid Request Format", "error", err)
-			ctx.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid Request Format",
-			})
-			ctx.Abort()
-			return
-		}
+			if !status {
+				ctx.JSON(http.StatusBadRequest, gin.H{
+					"status": status,
+					"error":  msg,
+				})
+				ctx.Abort()
+				return
+			} else {
+				ctx.JSON(http.StatusOK, gin.H{
+					"status": status,
+					"msg":    msg,
+				})
+				return
+			}
 
-		status, msg, err := services.UpdateContentType(subReq, s.rdb, ctx)
-		if err != nil {
-			s.logger.Info(msg, "error", err)
-			ctx.JSON(http.StatusInternalServerError, gin.H{
-				"status": status,
-				"error":  "Internal Server Error",
-				msg:      msg,
-			})
-			ctx.Abort()
-			return
-
-		}
-
-		if !status {
-			ctx.JSON(http.StatusBadRequest, gin.H{
-				"status": status,
-				"msg":    msg,
-			})
-			ctx.Abort()
-			return
-		} else {
-			ctx.JSON(http.StatusOK, gin.H{
-				"status": status,
-				"msg":    msg,
-			})
-			return
-
-		}
-
-	})
-
-	r.GET("/metrics", func(ctx *gin.Context) {
-		//us redis to store and access total jobs, successful jobs, etv
-
-		executed, failed, successful, msg, err := services.GetMetrics(s.rdb, ctx)
-		if err != nil {
-			s.logger.Info(msg, "error", err)
-			ctx.JSON(http.StatusInternalServerError, gin.H{
-				"status": false,
-				"msg":    msg,
-			})
-			ctx.Abort()
-			return
-
-		}
-
-		ctx.JSON(http.StatusOK, gin.H{
-			"status":              true,
-			"Total Jobs Executed": executed,
-			"Jobs Successful":     successful,
-			"Jobs Failed":         failed,
 		})
 
-	})
+		task.POST("/verify", Auth(), func(ctx *gin.Context) {
+			var req data.VerifyOtpParams
+			err := ctx.ShouldBind(&req)
+			if err != nil {
+				s.logger.Info("Invalid Request Format", "error", err)
+				ctx.JSON(http.StatusBadRequest, gin.H{
+					"error": "Invalid Request Format",
+				})
+				ctx.Abort()
+				return
+			}
+
+			verified, err := services.VerifyOtp(req, s.rdb, ctx)
+			if err != nil {
+				s.logger.Info("Error while verifying OTP", "error", err)
+				ctx.JSON(http.StatusInternalServerError, gin.H{
+					"error": "Internal Server Error",
+				})
+				ctx.Abort()
+				return
+			}
+
+			ctx.JSON(http.StatusOK, gin.H{
+				"type":     "otp verification",
+				"verified": verified,
+			})
+
+		})
+
+		task.POST("/subscriptionContent", Auth(), func(ctx *gin.Context) {
+			var subreq data.CreateContent
+
+			err := ctx.ShouldBind(&subreq)
+			if err != nil {
+				s.logger.Info("Invalid Request Format", "error", err)
+				ctx.JSON(http.StatusBadRequest, gin.H{
+					"error": "Invalid Request Format",
+				})
+				ctx.Abort()
+				return
+			}
+
+			msg, err := services.CreateContentType(subreq, s.rdb, ctx)
+			if err != nil {
+				s.logger.Info("Error while updating subscription content map", "error", err)
+				ctx.JSON(http.StatusInternalServerError, gin.H{
+					"error": "Internal Server Error",
+					"msg":   msg,
+				})
+				ctx.Abort()
+				return
+			} else {
+				ctx.JSON(http.StatusOK, gin.H{
+					"status": true,
+					"msg":    msg,
+				})
+				return
+			}
+
+		})
+
+		task.PUT("/subscriptionContent", Auth(), func(ctx *gin.Context) {
+			var subReq data.UpdateContent
+
+			err := ctx.ShouldBind(&subReq)
+			if err != nil {
+				s.logger.Info("Invalid Request Format", "error", err)
+				ctx.JSON(http.StatusBadRequest, gin.H{
+					"error": "Invalid Request Format",
+				})
+				ctx.Abort()
+				return
+			}
+
+			status, msg, err := services.UpdateContentType(subReq, s.rdb, ctx)
+			if err != nil {
+				s.logger.Info(msg, "error", err)
+				ctx.JSON(http.StatusInternalServerError, gin.H{
+					"status": status,
+					"error":  "Internal Server Error",
+					msg:      msg,
+				})
+				ctx.Abort()
+				return
+
+			}
+
+			if !status {
+				ctx.JSON(http.StatusBadRequest, gin.H{
+					"status": status,
+					"msg":    msg,
+				})
+				ctx.Abort()
+				return
+			} else {
+				ctx.JSON(http.StatusOK, gin.H{
+					"status": status,
+					"msg":    msg,
+				})
+				return
+
+			}
+
+		})
+
+	}
 
 	//8080
 	r.Run(s.Port)

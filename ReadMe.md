@@ -1,4 +1,4 @@
-# GoMail-Service
+# GoMail WorkQueue Microservice
 
 A high-performance, distributed **Email Microservice** written in Go. It leverages Redis for reliable task queuing and background processing, supporting everything from one-time OTPs to scheduled newsletter subscriptions.
 
@@ -24,15 +24,61 @@ Sending emails is a "slow" I/O operation. If your main application waits for an 
 * **Email:** [Native Go SMTP](https://pkg.go.dev/net/smtp) (Built-in email support)
 * **Logging:** [slog](https://pkg.go.dev/log/slog) (Structured JSON logging)
 
+## Authentication & User Management
+
+The service uses **JWT-based Authentication** to secure its endpoints. Users must first register to receive an API Key (JWT), which must then be provided in the `Authorization` header for all protected routes.
+
+### 1. User Registration (`/auth/signup` - POST)
+
+Registers a new user and generates a unique JWT. The association is stored in a Redis Hash (`UserList`).
+
+ **Payload:**
+```json
+{
+    "id": "user@example.com"
+}
+```
+ **Success Response:**
+```json
+{
+    "apiKey": "eyJhbG..."
+}
+```
+* **Note:** If a user is already registered, they must deregister before obtaining a new key.
+
+### 2. User Deregistration (`/auth/deregister` - POST)
+
+Removes a user from the system, effectively revoking their access and allowing for a fresh registration.
+
+ **Payload:**
+```json
+{
+    "id": "user@example.com"
+}
+```
+ **Success Response:**
+```json
+{
+    "status": true, "msg": "Deregistered successfully!"
+}
+```
+
+### 3. Using the Auth Middleware
+
+All protected routes (Tasks, Verification, Subscriptions) require the JWT in the header:
+
+> **Header:** `Authorization: <your_jwt_here>`
+
 ---
 
 ## API Endpoints & Task Types
 
-### 1. The Task Producer (`/task` - POST)
+### 1. The Task Producer (`/task/` - POST)
 
 The primary entry point. It accepts a task and enqueues it for background processing.
 
 **General Task Structure:**
+An example payload with all possible attributes
 
 ```json
 {
@@ -40,7 +86,12 @@ The primary entry point. It accepts a task and enqueues it for background proces
     "type": "generateOtp",
     "retries": 3,
     "payload": {
-       ...
+       "userId":"example@gmail.com",
+       "content_type": "weekly_newsletter",
+        "length": 6,
+        "frequency": "@weekly",
+        "subject": "Your Weekly Engineering Update",
+        "content": "<h1>Hello!</h1><p>Here is your weekly digest of backend updates.</p>",
     }
 }
 
@@ -50,10 +101,10 @@ The primary entry point. It accepts a task and enqueues it for background proces
 
 | Task Type | Description | Payload Requirements |
 | --- | --- | --- |
-| **message** | Sends an immediate email with specified subject and content. | `userId` (email), `subject`, `content`. |
-| **generateOtp** | Generates an OTP, stores it in Redis for verification, and sends it to the user. | `userId` (email), `length` (int, min = 4, max = 8). |
-| **subscribe** | Registers a recurring cron job (hourly, daily, weekly, monthly) for newsletters. | `userId`(email), `frequency`, `content_type`, `subject`, `content`. |
-| **unsubscribe** | Removes a user's record from a specific cron-based subscription. | `userId`, `content_type`. |
+| **message** | Sends an immediate email with specified subject and content. | `userId` (recipient's email), `subject`, `content`. |
+| **generateOtp** | Generates an OTP, stores it in Redis for verification, and sends it to the user. | `userId` (recipient's email), `length` (int, min = 4, max = 8). |
+| **subscribe** | Registers a recurring cron job (hourly, daily, weekly, monthly) for newsletters. | `userId`(recipient's email), `frequency`, `content_type`, `subject`, `content`. |
+| **unsubscribe** | Removes a user's record from a specific cron-based subscription. | `userId`(recipient's email), `content_type`. |
 
 **Sample Response:**
 
@@ -67,7 +118,7 @@ The primary entry point. It accepts a task and enqueues it for background proces
 
 ---
 
-### 2. OTP Verification (`/verify` - POST)
+### 2. OTP Verification (`/task/verify` - POST)
 
 Validates the OTP stored in the Redis HashMap against the user's email.
 
@@ -93,7 +144,7 @@ Validates the OTP stored in the Redis HashMap against the user's email.
 
 ---
 
-### 3. Subscription Management (`/subscriptionContent`)
+### 3. Subscription Management (`/task/subscriptionContent`)
 
 Manage the content templates used for your recurring emails.
 
@@ -144,12 +195,12 @@ Modifies an existing template in the Redis HashMap.
 
 ### 4. Health & Metrics
 
-#### **`/ping` (GET)**
+#### **`/health/ping` (GET)**
 
 * **Description:** Standard health check to verify server availability.
 * **Response:** `{"message": "pong"}`
 
-#### **`/metrics` (GET)**
+#### **`/health/metrics` (GET)**
 
 * **Description:** Retrieves real-time execution statistics directly from Redis.
 * **Response:**
