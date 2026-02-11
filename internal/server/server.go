@@ -29,14 +29,17 @@ func (s *Server) StartServer() {
 	//start server and pass params into redis
 	r := gin.Default()
 
-	r.GET("/ping", func(c *gin.Context) {
+	r.GET("/ping", Auth(), func(c *gin.Context) {
 		s.logger.Info("Endpoint health check")
 		c.JSON(http.StatusOK, gin.H{
 			"message": "pong",
 		})
 	})
 
-	r.POST("/task", func(ctx *gin.Context) {
+	r.POST("/signup", HandleSignup(s.rdb))
+	r.POST("/deregister", HandleDeRegister(s.rdb))
+
+	r.POST("/task", Auth(), func(ctx *gin.Context) {
 		var task data.Task
 		err := ctx.ShouldBind(&task)
 		if err != nil {
@@ -94,7 +97,7 @@ func (s *Server) StartServer() {
 
 	})
 
-	r.POST("/verify", func(ctx *gin.Context) {
+	r.POST("/verify", Auth(), func(ctx *gin.Context) {
 		var req data.VerifyOtpParams
 		err := ctx.ShouldBind(&req)
 		if err != nil {
@@ -123,7 +126,7 @@ func (s *Server) StartServer() {
 
 	})
 
-	r.POST("/subscriptionContent", func(ctx *gin.Context) {
+	r.POST("/subscriptionContent", Auth(), func(ctx *gin.Context) {
 		var subreq data.CreateContent
 
 		err := ctx.ShouldBind(&subreq)
@@ -155,7 +158,7 @@ func (s *Server) StartServer() {
 
 	})
 
-	r.PUT("/subscriptionContent", func(ctx *gin.Context) {
+	r.PUT("/subscriptionContent", Auth(), func(ctx *gin.Context) {
 		var subReq data.UpdateContent
 
 		err := ctx.ShouldBind(&subReq)

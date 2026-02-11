@@ -26,7 +26,7 @@ func GetMetrics(rdb *redis.Client, ctx *gin.Context) (totalTasksExecuted string,
 	totalTasksSuccessful, err = rdb.Get(ctx, "totalTasksSuccessful").Result()
 	if err != nil {
 		if err == redis.Nil {
-			totalTasksFailed = "0"
+			totalTasksSuccessful = "0"
 		} else {
 			return "0", "0", "0", "Error while accessing total successful tasks", err
 		}

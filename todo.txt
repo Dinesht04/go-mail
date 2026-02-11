@@ -69,5 +69,6 @@ to do task:-
     x2)Moving OTP verification Logic into Services
     x3)Moving ContentType logic into Services
   4)Implementing Auth
+    for auth.. I should learn and implement API key system. Exhaustion of tokens? or time period?
     x5)Write Logs to a logs.txt file
     x6)Move metric logic into services
