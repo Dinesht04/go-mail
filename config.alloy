@@ -1,0 +1,17 @@
+// 1. Discovery: Find the file
+local.file_match "app_logs" {
+    path_targets = [{"__address__" = "localhost", "__path__" = "/var/log/app.log"}]
+}
+
+// 2. Scraper: Read the file content
+loki.source.file "local_files" {
+    targets    = local.file_match.app_logs.targets
+    forward_to = [loki.write.local_loki.receiver]
+}
+
+// 3. Writer: Send it to the Loki database
+loki.write "local_loki" {
+    endpoint {
+        url = "http://loki:3100/loki/api/v1/push"
+    }
+}

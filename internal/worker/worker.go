@@ -39,14 +39,15 @@ func Worker(rdb *redis.Client, ctx context.Context, cron *cron.CronJobStation, l
 	for {
 
 		results, err := rdb.BLPop(ctx, time.Minute, "taskQueue").Result()
-		if err == redis.Nil {
-			continue
-		}
-
-		err = rdb.Incr(ctx, "totalTasksExecuted").Err()
 		if err != nil {
-			logger.Info("Error incrementing total tasks", "error", err)
+			if err == redis.Nil {
+				continue
+			} else {
+				logger.Error("Error Popping Task from Queue",
+					"error", err,
+				)
 
+			}
 		}
 
 		result := results[1]
@@ -55,7 +56,11 @@ func Worker(rdb *redis.Client, ctx context.Context, cron *cron.CronJobStation, l
 
 		err = json.Unmarshal([]byte(result), &task)
 		if err != nil {
-			log.Fatal("inside worker, first task", err)
+			logger.Error("Error Unmarshalling task",
+				"error", err,
+				"taskId", task.Id,
+				"taskName", task.Task)
+			continue
 		}
 
 		task.Retries = task.Retries - 1
@@ -68,6 +73,12 @@ func Worker(rdb *redis.Client, ctx context.Context, cron *cron.CronJobStation, l
 
 		var status bool
 		var logs string
+
+		err = rdb.Incr(ctx, "totalTasksExecuted").Err()
+		if err != nil {
+			logger.Error("Error incrementing total tasks", "error", err)
+
+		}
 
 		switch taskType {
 		case "generateOtp":
@@ -82,7 +93,7 @@ func Worker(rdb *redis.Client, ctx context.Context, cron *cron.CronJobStation, l
 			//should this stay here?
 			status, logs, err = services.Unsubscribe(task, rdb, cron)
 		default:
-			logger.Info("Invalid Task Type", "unknown_task_type", task.Type)
+			logger.Warn("Invalid Task Type", "unknown_task_type", task.Type)
 		}
 
 		logger.Info("Task processed",
@@ -96,12 +107,12 @@ func Worker(rdb *redis.Client, ctx context.Context, cron *cron.CronJobStation, l
 
 			err = rdb.Incr(ctx, "totalTasksFailed").Err()
 			if err != nil {
-				logger.Info("Error incrementing failed tasks", "error", err)
+				logger.Error("Error incrementing failed tasks", "error", err)
 
 			}
 
 			if err != nil {
-				logger.Info("Task Failed Due to error",
+				logger.Error("Task Failed Due to error",
 					"error", err,
 					"taskId", task.Id,
 					"taskName", task.Task,
@@ -110,7 +121,7 @@ func Worker(rdb *redis.Client, ctx context.Context, cron *cron.CronJobStation, l
 				)
 
 			} else {
-				logger.Info("Task Failed",
+				logger.Warn("Task Failed",
 					"latest_logs", logs,
 					"taskId", task.Id,
 					"taskName", task.Task,
@@ -121,7 +132,7 @@ func Worker(rdb *redis.Client, ctx context.Context, cron *cron.CronJobStation, l
 			}
 
 			if task.Retries <= 0 {
-				logger.Info("Retries Finished",
+				logger.Warn("Retries Finished",
 					"latest_logs", logs,
 					"taskId", task.Id,
 					"taskName", task.Task,
@@ -156,7 +167,7 @@ func Worker(rdb *redis.Client, ctx context.Context, cron *cron.CronJobStation, l
 
 			err = rdb.Incr(ctx, "totalTasksSuccessful").Err()
 			if err != nil {
-				logger.Info("Error incrementing successful tasks", "error", err)
+				logger.Error("Error incrementing successful tasks", "error", err)
 
 			}
 		}

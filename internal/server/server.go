@@ -42,7 +42,7 @@ func (s *Server) StartServer() {
 
 			executed, failed, successful, msg, err := services.GetMetrics(s.rdb, ctx)
 			if err != nil {
-				s.logger.Info(msg, "error", err)
+				s.logger.Error(msg, "error", err)
 				ctx.JSON(http.StatusInternalServerError, gin.H{
 					"status": false,
 					"msg":    msg,
@@ -84,7 +84,7 @@ func (s *Server) StartServer() {
 
 			validated, msg, err := services.ValidateTask(task, s.rdb, ctx)
 			if err != nil {
-				s.logger.Info("Error Validating Task", "error", err)
+				s.logger.Error("Error Validating Task", "error", err)
 				ctx.JSON(http.StatusInternalServerError, gin.H{
 					"status": "false",
 					"error":  "Internal Server Error",
@@ -103,7 +103,7 @@ func (s *Server) StartServer() {
 
 			status, msg, err := services.ProduceTask(task, s.rdb, ctx)
 			if err != nil {
-				s.logger.Info("Error Producing Task", "error", err)
+				s.logger.Error("Error Producing Task", "error", err)
 				ctx.JSON(http.StatusInternalServerError, gin.H{
 					"status": "false",
 					"error":  "Internal Server Error",
@@ -133,7 +133,6 @@ func (s *Server) StartServer() {
 			var req data.VerifyOtpParams
 			err := ctx.ShouldBind(&req)
 			if err != nil {
-				s.logger.Info("Invalid Request Format", "error", err)
 				ctx.JSON(http.StatusBadRequest, gin.H{
 					"error": "Invalid Request Format",
 				})
@@ -143,7 +142,7 @@ func (s *Server) StartServer() {
 
 			verified, err := services.VerifyOtp(req, s.rdb, ctx)
 			if err != nil {
-				s.logger.Info("Error while verifying OTP", "error", err)
+				s.logger.Error("Error while verifying OTP", "error", err)
 				ctx.JSON(http.StatusInternalServerError, gin.H{
 					"error": "Internal Server Error",
 				})
@@ -163,7 +162,6 @@ func (s *Server) StartServer() {
 
 			err := ctx.ShouldBind(&subreq)
 			if err != nil {
-				s.logger.Info("Invalid Request Format", "error", err)
 				ctx.JSON(http.StatusBadRequest, gin.H{
 					"error": "Invalid Request Format",
 				})
@@ -173,7 +171,7 @@ func (s *Server) StartServer() {
 
 			msg, err := services.CreateContentType(subreq, s.rdb, ctx)
 			if err != nil {
-				s.logger.Info("Error while updating subscription content map", "error", err)
+				s.logger.Error("Error while updating subscription content map", "error", err)
 				ctx.JSON(http.StatusInternalServerError, gin.H{
 					"error": "Internal Server Error",
 					"msg":   msg,
@@ -195,7 +193,6 @@ func (s *Server) StartServer() {
 
 			err := ctx.ShouldBind(&subReq)
 			if err != nil {
-				s.logger.Info("Invalid Request Format", "error", err)
 				ctx.JSON(http.StatusBadRequest, gin.H{
 					"error": "Invalid Request Format",
 				})
@@ -205,7 +202,7 @@ func (s *Server) StartServer() {
 
 			status, msg, err := services.UpdateContentType(subReq, s.rdb, ctx)
 			if err != nil {
-				s.logger.Info(msg, "error", err)
+				s.logger.Error(msg, "error", err)
 				ctx.JSON(http.StatusInternalServerError, gin.H{
 					"status": status,
 					"error":  "Internal Server Error",

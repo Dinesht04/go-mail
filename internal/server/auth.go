@@ -25,7 +25,6 @@ func CreateJWT(id string) (string, error) {
 
 	tokenString, err := token.SignedString([]byte("my_secret"))
 	if err != nil {
-		fmt.Println("error occured", err)
 		return "", err
 	}
 
@@ -37,7 +36,6 @@ func VerifyJWT(tokenString string) (bool, error) {
 		return []byte("my_secret"), nil
 	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
 	if err != nil {
-		fmt.Println("error occured", err)
 		return false, err
 	}
 

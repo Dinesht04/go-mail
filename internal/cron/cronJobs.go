@@ -79,7 +79,7 @@ func RegisterCronSendingEmailJob(c *CronJobStation, userEmailId string, frequenc
 		if err != nil {
 			if err == redis.Nil {
 				fmt.Println("This type of content doesnt exist")
-				c.logger.Info("The type of content doesn't exist in db")
+				c.logger.Warn("The type of content doesn't exist in db")
 				return
 			} else {
 				c.logger.Info("Error accessing content type from db")
@@ -104,16 +104,14 @@ func RegisterCronSendingEmailJob(c *CronJobStation, userEmailId string, frequenc
 
 		encodedTask, err := json.Marshal(&messageTask)
 		if err != nil {
-			c.logger.Info("Error decoding task")
+			c.logger.Warn("Error decoding task")
 			fmt.Println(err)
 			return
 		}
 
 		err = c.rdb.RPush(c.context, "taskQueue", encodedTask).Err()
 		if err != nil {
-			fmt.Println("Error Pushing to task Queue")
-			c.logger.Info("Error pushing task to queue", "taskId", messageTask.Id)
-			fmt.Println(err)
+			c.logger.Error("Error pushing task to queue", "taskId", messageTask.Id)
 			return
 		} else {
 			c.logger.Info("Cron job succefful, task added to Queue", "taskId", messageTask.Id)

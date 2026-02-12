@@ -1,0 +1,28 @@
+services:
+  # Loki: The database that stores logs (No indexing full text = cheap storage)
+  loki:
+    image: grafana/loki:3.0.0
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+
+  # Alloy: The "Collector" that watches your app.log
+  alloy:
+    image: grafana/alloy:latest
+    volumes:
+      - ./app.log:/var/log/app.log:ro     # Mount your log file
+      - ./config.alloy:/etc/alloy/config.alloy # Mount the collector config
+    command: run --server.http.listen-addr=0.0.0.0:12345 /etc/alloy/config.alloy
+    depends_on:
+      - loki
+
+  # Grafana: The UI to see it all
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    depends_on:
+      - loki

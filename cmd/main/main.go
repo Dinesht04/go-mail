@@ -14,22 +14,23 @@ import (
 
 func main() {
 
-	err := godotenv.Load()
+	logger, file, err := log.CreateLogger()
 	if err != nil {
-		panic(fmt.Errorf("Error Loading .env file", err))
+		panic(fmt.Errorf("Error craeting Logger"))
+	}
+	defer file.Close()
+
+	err = godotenv.Load()
+	if err != nil {
+		logger.Error("Error Loading .env file", "error", err)
+		panic(fmt.Errorf("Error Loading .env file"))
 	}
 
 	ctx := context.Background()
 
-	logger, file, err := log.CreateLogger()
-	if err != nil {
-		panic(fmt.Errorf("Error craeting Logger", err))
-	}
-	defer file.Close()
-
 	rdb, err := data.NewRedisClient(ctx, logger)
 	if err != nil {
-		logger.Info("Error Initiating redis client", "error", err)
+		logger.Error("Error Initiating redis client", "error", err)
 	}
 
 	server := server.NewServer(rdb, logger)
