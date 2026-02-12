@@ -72,8 +72,7 @@ to do task:-
     for auth.. I should learn and implement API key system. Exhaustion of tokens? or time period?
     x5)Write Logs to a logs.txt file
     x6)Move metric logic into services
-7)Setup Monitoring and better metrics (LGTM?) Make a nice dashbaord, w stats and logs visualisatoins
-8)Setup Dockerfile, docker compose maybe no need for prometheus rn, only loki since my app is log heavy
-9)understand kubernetes. How can I orchestrate everything? Does it have a role in my project?
-10)Add rotation in logs
-11) Make it deployable
+    x7)Setup Monitoring and better metrics (LGTM?) Make a nice dashbaord, w stats and logs visualisatoins
+8)Setup Dockerfile, docker compose maybe no need for prometheus rn, only loki since my app is log heavy.
+9)understand kubernetes. How can I orchestrate everything? Does it have a role in my project? - Pertains to deployment, not in scope rn
+x10)Add rotation in logs

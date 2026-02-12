@@ -4,6 +4,8 @@ import (
 	"io"
 	"log/slog"
 	"os"
+
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 func CreateLogger() (*slog.Logger, *os.File, error) {
@@ -13,13 +15,20 @@ func CreateLogger() (*slog.Logger, *os.File, error) {
 		return nil, nil, err
 	}
 
-	multiWriter := io.MultiWriter(file, os.Stdout)
+	log := &lumberjack.Logger{
+		Filename:   "./app.log",
+		MaxSize:    10, // megabytes
+		MaxBackups: 3,
+		MaxAge:     28,   //days
+		Compress:   true, // disabled by default
+
+	}
+
+	multiWriter := io.MultiWriter(log, os.Stdout)
 
 	handler := slog.NewJSONHandler(multiWriter, nil)
 
 	logger := slog.New(handler)
-
-	logger.Info("Instantiating Logger")
 
 	return logger, file, nil
 }

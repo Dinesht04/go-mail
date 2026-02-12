@@ -19,19 +19,23 @@ func main() {
 		panic(fmt.Errorf("Error craeting Logger"))
 	}
 	defer file.Close()
+	logger.Info("Instantiated Logger Successfully")
 
 	err = godotenv.Load()
 	if err != nil {
 		logger.Error("Error Loading .env file", "error", err)
 		panic(fmt.Errorf("Error Loading .env file"))
 	}
+	logger.Info("Loaded Environment Variables Successfully")
 
 	ctx := context.Background()
 
 	rdb, err := data.NewRedisClient(ctx, logger)
 	if err != nil {
 		logger.Error("Error Initiating redis client", "error", err)
+		panic(fmt.Errorf("Error creating redis client"))
 	}
+	logger.Info("Instantiated Redis Client Successfully")
 
 	server := server.NewServer(rdb, logger)
 	CronJobStation := cron.CreateNewCronJobStation(ctx, rdb, logger)
